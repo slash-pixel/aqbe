@@ -1,0 +1,98 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RecurrenceType {
+  NONE
+  WEEKLY
+  WEEKDAYS
+  DAILY
+}
+
+enum OccurrenceStatus {
+  SCHEDULED
+  CANCELLED
+}
+
+model EventCategory {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String?
+
+  events Event[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Event {
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+
+  // Catégorie
+  categoryId String
+  category   EventCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  // Récurrence
+  recurrenceType RecurrenceType @default(NONE)
+
+  // 1 = lundi, 2 = mardi ... 7 = dimanche
+  weekdays String @default("")
+
+  // Période de programmation
+  recurrenceStart DateTime
+  isPermanent     Boolean   @default(true)
+  recurrenceEnd   DateTime?
+
+  // Horaires habituels HH:mm
+  startTime String
+  endTime   String
+
+  // Activation / suspension
+  isActive Boolean @default(true)
+
+  // Occurrences
+  occurrences EventOccurrence[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId, isActive])
+  @@index([isActive, recurrenceType])
+}
+
+model EventOccurrence {
+  id             String   @id @default(uuid())
+  recurrenceDate DateTime
+  eventId        String
+  event          Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Dates et heures réelles
+  startsAt DateTime
+  endsAt   DateTime
+
+  // État
+  status OccurrenceStatus @default(SCHEDULED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Éviter les doublons
+  @@unique([eventId, recurrenceDate])
+  // Index de recherche
+  @@index([status, startsAt])
+  @@index([status, endsAt])
+  @@index([eventId, startsAt])
+}
