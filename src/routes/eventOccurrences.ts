@@ -1,10 +1,10 @@
-
 import { Hono } from 'hono'
 import { prisma } from '../lib/prisma.js'
+import { adminAuth } from '../middleware/adminAuth.js'
 
 const eventOccurrences = new Hono()
 
-// Consulter une occurrence
+// Consulter une occurrence (public)
 eventOccurrences.get('/:id', async (c) => {
   try {
     const occurrence = await prisma.eventOccurrence.findUnique({
@@ -34,8 +34,8 @@ eventOccurrences.get('/:id', async (c) => {
   }
 })
 
-// Décaler une seule occurrence de 7 jours
-eventOccurrences.patch('/:id/shift-seven-days', async (c) => {
+// Décaler une seule occurrence de 7 jours (administrateur connecté)
+eventOccurrences.patch('/:id/shift-seven-days', adminAuth, async (c) => {
   try {
     const id = c.req.param('id')
     const now = new Date()
@@ -124,8 +124,8 @@ eventOccurrences.patch('/:id/shift-seven-days', async (c) => {
   }
 })
 
-// Annuler une seule occurrence sans supprimer son historique
-eventOccurrences.delete('/:id', async (c) => {
+// Annuler une seule occurrence sans supprimer son historique (administrateur connecté)
+eventOccurrences.delete('/:id', adminAuth, async (c) => {
   try {
     const id = c.req.param('id')
 

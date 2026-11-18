@@ -1,10 +1,11 @@
 
 import { Hono } from 'hono'
 import { prisma } from '../lib/prisma.js'
+import { adminAuth } from '../middleware/adminAuth.js'
 
 const categories = new Hono()
 
-// Lister toutes les catégories
+// Lister toutes les catégories (public)
 categories.get('/', async (c) => {
   try {
     const result = await prisma.eventCategory.findMany({
@@ -14,11 +15,21 @@ categories.get('/', async (c) => {
     return c.json(result)
   } catch (error) {
     console.error('Erreur chargement catégories :', error)
+
     return c.json(
       { message: 'Erreur lors du chargement des catégories' },
       500
     )
   }
+})
+
+// Toutes les opérations suivantes nécessitent une authentification
+categories.use('*', async (c, next) => {
+  if (c.req.method === 'GET') {
+    return next()
+  }
+
+  return adminAuth(c, next)
 })
 
 // Créer une catégorie

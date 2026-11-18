@@ -3,6 +3,7 @@ import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 
 import eventOccurrences from './routes/eventOccurrences.js'
+import admin from './routes/admin.js'
 import { startEventScheduler } from './services/eventScheduler.js'
 import events from './routes/events.js'
 import categories from './routes/categories.js'
@@ -29,6 +30,7 @@ app.get('/api/health', (c) => {
 app.route('/api/categories', categories)
 app.route('/api/events', events)
 app.route('/api/occurrences', eventOccurrences)
+app.route('/api/admin', admin)
 
 // Route inexistante
 app.notFound((c) => {

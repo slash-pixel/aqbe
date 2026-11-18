@@ -1,6 +1,7 @@
 
 import { Hono } from 'hono'
 import { prisma } from '../lib/prisma.js'
+import { adminAuth } from '../middleware/adminAuth.js'
 import {
   generateOccurrences,
   synchronizeFutureOccurrences
@@ -32,8 +33,8 @@ function validWeekdays(value: unknown): boolean {
     new Set(value).size === value.length
 }
 
-// Créer un événement
-events.post('/', async (c) => {
+// Créer un événement (administrateur connecté)
+events.post('/', adminAuth, async (c) => {
   try {
     const body = await c.req.json()
 
@@ -129,7 +130,7 @@ events.post('/', async (c) => {
   }
 })
 
-// Lister les événements
+// Lister les événements (public)
 events.get('/', async (c) => {
   try {
     const activeOnly = c.req.query('active')
@@ -156,7 +157,7 @@ events.get('/', async (c) => {
   }
 })
 
-// Calendrier hebdomadaire
+// Calendrier hebdomadaire (public)
 events.get('/calendar/week', async (c) => {
   try {
     const dateParam = c.req.query('date')
@@ -286,7 +287,7 @@ events.get('/next', async (c) => {
   }
 })
 
-// Consulter un événement
+// Consulter un événement (public)
 events.get('/:id', async (c) => {
   try {
     const event = await prisma.event.findUnique({
@@ -313,8 +314,8 @@ events.get('/:id', async (c) => {
   }
 })
 
-// Modifier un événement
-events.patch('/:id', async (c) => {
+// Modifier un événement (administrateur connecté)
+events.patch('/:id', adminAuth, async (c) => {
   try {
     const id = c.req.param('id')
     const body = await c.req.json()
@@ -518,8 +519,8 @@ events.patch('/:id', async (c) => {
   }
 })
 
-// Suspendre une programmation sans supprimer ses occurrences
-events.delete('/:id', async (c) => {
+// Suspendre une programmation sans supprimer ses occurrences (administrateur connecté)
+events.delete('/:id', adminAuth, async (c) => {
   try {
     const id = c.req.param('id')
 
