@@ -1,6 +1,7 @@
 
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 
 import eventOccurrences from './routes/eventOccurrences.js'
 import admin from './routes/admin.js'
@@ -9,6 +10,26 @@ import events from './routes/events.js'
 import categories from './routes/categories.js'
 
 const app = new Hono()
+
+// Configuration CORS : autoriser tous les frontends
+app.use(
+  '*',
+  cors({
+    origin: '*',
+    allowMethods: [
+      'GET',
+      'POST',
+      'PATCH',
+      'DELETE',
+      'OPTIONS'
+    ],
+    allowHeaders: [
+      'Content-Type',
+      'Authorization'
+    ],
+    maxAge: 86400
+  })
+)
 
 // Route principale
 app.get('/', (c) => {
