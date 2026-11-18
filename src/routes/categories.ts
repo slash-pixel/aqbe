@@ -9,68 +9,51 @@ const categories = new Hono()
 categories.get('/', async (c) => {
   try {
     const result = await prisma.eventCategory.findMany({
-      orderBy: { name: 'asc' }
+      orderBy: {
+        name: 'asc'
+      }
     })
 
     return c.json(result)
   } catch (error) {
-    console.error('Erreur chargement catégories :', error)
-
-    return c.json(
-      { message: 'Erreur lors du chargement des catégories' },
-      500
-    )
+    console.error('[GET CATEGORIES]', error)
+    return c.json({ message: 'Erreur lors de la récupération des catégories' }, 500)
   }
 })
 
-// Toutes les opérations suivantes nécessitent une authentification
-categories.use('*', async (c, next) => {
-  if (c.req.method === 'GET') {
-    return next()
-  }
-
-  return adminAuth(c, next)
-})
-
-// Créer une catégorie
-categories.post('/', async (c) => {
+// Créer une catégorie (admin connecté)
+categories.post('/', adminAuth, async (c) => {
   try {
     const body = await c.req.json()
-
-    const name =
-      typeof body.name === 'string' ? body.name.trim() : ''
-
-    const description =
-      typeof body.description === 'string'
-        ? body.description.trim() || null
-        : null
+    const name = String(body.name ?? '').trim()
+    const description = body.description
+      ? String(body.description).trim()
+      : null
 
     if (!name) {
-      return c.json(
-        { message: 'Le nom de la catégorie est obligatoire' },
-        400
-      )
+      return c.json({ message: 'Le nom de la catégorie est obligatoire' }, 400)
     }
 
     const category = await prisma.eventCategory.create({
-      data: { name, description }
+      data: {
+        name,
+        description
+      }
     })
 
     return c.json(category, 201)
-  } catch (error) {
-    console.error('Erreur création catégorie :', error)
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return c.json({ message: 'Cette catégorie existe déjà' }, 409)
+    }
 
-    return c.json(
-      {
-        message: 'Impossible de créer la catégorie. Vérifie si elle existe déjà.'
-      },
-      400
-    )
+    console.error('[POST CATEGORY]', error)
+    return c.json({ message: 'Erreur lors de la création de la catégorie' }, 500)
   }
 })
 
-// Modifier une catégorie
-categories.patch('/:id', async (c) => {
+// Modifier une catégorie (admin connecté)
+categories.patch('/:id', adminAuth, async (c) => {
   try {
     const id = c.req.param('id')
     const body = await c.req.json()
@@ -81,38 +64,23 @@ categories.patch('/:id', async (c) => {
     } = {}
 
     if (body.name !== undefined) {
-      if (typeof body.name !== 'string' || !body.name.trim()) {
-        return c.json(
-          { message: 'Nom de catégorie invalide' },
-          400
-        )
+      const name = String(body.name).trim()
+
+      if (!name) {
+        return c.json({ message: 'Le nom de la catégorie est obligatoire' }, 400)
       }
 
-      data.name = body.name.trim()
+      data.name = name
     }
 
     if (body.description !== undefined) {
-      if (
-        body.description !== null &&
-        typeof body.description !== 'string'
-      ) {
-        return c.json(
-          { message: 'Description de catégorie invalide' },
-          400
-        )
-      }
-
-      data.description =
-        typeof body.description === 'string'
-          ? body.description.trim() || null
-          : null
+      data.description = body.description
+        ? String(body.description).trim()
+        : null
     }
 
     if (Object.keys(data).length === 0) {
-      return c.json(
-        { message: 'Aucune modification fournie' },
-        400
-      )
+      return c.json({ message: 'Aucune modification fournie' }, 400)
     }
 
     const category = await prisma.eventCategory.update({
@@ -121,18 +89,22 @@ categories.patch('/:id', async (c) => {
     })
 
     return c.json(category)
-  } catch (error) {
-    console.error('Erreur modification catégorie :', error)
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      return c.json({ message: 'Catégorie introuvable' }, 404)
+    }
 
-    return c.json(
-      { message: 'Catégorie introuvable ou modification impossible' },
-      400
-    )
+    if (error.code === 'P2002') {
+      return c.json({ message: 'Cette catégorie existe déjà' }, 409)
+    }
+
+    console.error('[PATCH CATEGORY]', error)
+    return c.json({ message: 'Erreur lors de la modification de la catégorie' }, 500)
   }
 })
 
-// Supprimer une catégorie
-categories.delete('/:id', async (c) => {
+// Supprimer une catégorie (admin connecté)
+categories.delete('/:id', adminAuth, async (c) => {
   try {
     const id = c.req.param('id')
 
@@ -140,16 +112,20 @@ categories.delete('/:id', async (c) => {
       where: { id }
     })
 
-    return c.json({ message: 'Catégorie supprimée' })
-  } catch (error) {
-    console.error('Erreur suppression catégorie :', error)
+    return c.json({ message: 'Catégorie supprimée avec succès' })
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      return c.json({ message: 'Catégorie introuvable' }, 404)
+    }
 
-    return c.json(
-      {
-        message: 'Suppression impossible : vérifie si des événements utilisent cette catégorie.'
-      },
-      400
-    )
+    if (error.code === 'P2003') {
+      return c.json({
+        message: 'Impossible de supprimer cette catégorie car elle est utilisée par des événements'
+      }, 409)
+    }
+
+    console.error('[DELETE CATEGORY]', error)
+    return c.json({ message: 'Erreur lors de la suppression de la catégorie' }, 500)
   }
 })
 
